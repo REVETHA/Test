@@ -1,49 +1,49 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.cluster import KMeans
 
-# Load CSV
-df = pd.read_csv("data/State-FemaleLFPR.csv")
-df.columns = df.columns.str.strip()
+# Load and clean column names
+df = pd.read_csv(r'dataset\State-FemaleLFPR.csv')
+df.columns = df.columns.str.strip().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
 
-# Custom clustering based on thresholds
-def label_cluster(value):
-    if value > 35:
-        return "High"
-    elif value > 20:
-        return "Medium"
-    else:
-        return "Low"
+# Run KMeans
+kmeans = KMeans(n_clusters=3, random_state=42)
+df['Cluster'] = kmeans.fit_predict(df[['Female_LFPR_%']])
 
-df['Cluster'] = df['Female LFPR (%)'].apply(label_cluster)
+# Get min/max LFPR range for each cluster
+cluster_ranges = df.groupby('Cluster')['Female_LFPR_%'].agg(['min', 'max'])
 
-# Define labels with range info
-legend_labels = {
-    'Low': 'Low LFPR (<= 20%)',
-    'Medium': 'Medium LFPR (> 20%)',
-    'High': 'High LFPR (> 35%)'
-}
+# Sort clusters by LFPR average (to assign LOW/MEDIUM/HIGH meaningfully)
+cluster_order = df.groupby('Cluster')['Female_LFPR_%'].mean().sort_values().index.tolist()
 
-# Color map for clusters
-color_map = {'Low': 'red', 'Medium': 'orange', 'High': 'green'}
+# Create legend labels
+cluster_labels = {}
+labels = ['LOW', 'MEDIUM', 'HIGH']
+for idx, cluster_id in enumerate(cluster_order):
+    row = cluster_ranges.loc[cluster_id]
+    label = f"{labels[idx]} ({row['min']}% - {row['max']}%)"
+    cluster_labels[cluster_id] = label
 
-# Plot
+# Add readable labels
+df['Cluster_Label'] = df['Cluster'].map(cluster_labels)
+
+#  Plot
 plt.figure(figsize=(12, 6))
-for cluster in ['Low', 'Medium', 'High']:
-    cluster_data = df[df['Cluster'] == cluster]
-    plt.bar(cluster_data['State'], cluster_data['Female LFPR (%)'],
-            color=color_map[cluster], label=legend_labels[cluster])
-
+sns.barplot(
+    x='State', y='Female_LFPR_%', hue='Cluster_Label',  # 👈 FIXED HERE
+    data=df, palette='Set1', dodge=False
+)
 plt.xticks(rotation=90)
-plt.ylabel("Female LFPR (%)")
-plt.title("Female Labour Force Participation Rate in INDIA (statewise)(comparison-based)")
-plt.legend()
+plt.xlabel('States')
+plt.ylabel('Female Labour Force Participation Rate (%)')
+plt.title('K-means Clustering of Indian States by Female LFPR')
+plt.legend(title='Female Workforce Participation')
 plt.tight_layout()
 plt.show()
 
-# Grouped States by Cluster
-print("\nFemale Labour Force Participation Rate:")
-for cluster in ['Low', 'Medium', 'High']:
-    states = df[df['Cluster'] == cluster]['State'].tolist()
-    print(f"\n-----------{cluster} Labor rate States-------------")
-    print(", ".join(states))
-    #print("-" * 60)
+#  Print grouped states
+print("\nGrouped States based on Female Workforce:")
+for label in df['Cluster_Label'].unique():
+    states = df[df['Cluster_Label'] == label]['State'].tolist()
+    print(f"\n{label}:\n" + ", ".join(states))
