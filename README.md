@@ -11,13 +11,15 @@ The data used is state-wise Female LFPR (in %) from the latest available sources
 
 Workflow:
 Load data from a CSV file.
-Assign clusters to each state: Low: LFPR ≤ 20%, Medium: 20% < LFPR ≤ 40%, High: LFPR > 40%
+
+K Means Clustering
 
 Visualize the clusters using a color-coded bar chart.
 
 Print the list of states in each cluster.
 
-
 Prerequisites:
 pandas
 matplotlib
+seaborn
+
